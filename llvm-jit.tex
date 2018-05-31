@@ -79,6 +79,28 @@
 \usepackage{graphicx} % Allows including images
 \usepackage{booktabs} % Allows the use of \toprule, \midrule and \bottomrule in tables
 \usepackage{esint}
+\usepackage{listings}
+
+\lstset{frame=none,
+	language=c++,
+	aboveskip=3mm,
+	belowskip=3mm,
+	showstringspaces=false,
+	columns=flexible,
+	basicstyle={\small\ttfamily},
+	numbers=left,
+	numberstyle=\tiny\color{gray},
+	keywordstyle=\color{blue},
+	commentstyle=\color{dkgreen},
+	stringstyle=\color{mauve},
+	breaklines=true,
+	breakatwhitespace=true,
+	tabsize=4
+}
+
+\definecolor{dkgreen}{rgb}{0,0.6,0}
+\definecolor{gray}{rgb}{0.5,0.5,0.5}
+\definecolor{mauve}{rgb}{0.58,0,0.82}
 
 %----------------------------------------------------------------------------------------
 %	TITLE PAGE
@@ -112,152 +134,127 @@ School of Information Science and Technology(SIST) \\
 %----------------------------------------------------------------------------------------
 
 %------------------------------------------------
-\section{Motivation} % Sections can be created in order to organize your presentation into discrete blocks, all sections and subsections are automatically printed in the table of contents as an overview of the talk
+\section{What is JIT} % Sections can be created in order to organize your presentation into discrete blocks, all sections and subsections are automatically printed in the table of contents as an overview of the talk
 %------------------------------------------------
 
 %\subsection{Subsection Example} % A subsection can be created just before a set of slides with a common theme to further break down your presentation into chunks
 
 \begin{frame}
-\frametitle{Motivation}
+\frametitle{What is Just in Time}
+\begin{itemize}
+	\item Program stored in Bytecode;
+	\item Furture compiled right before it's called;
+	\item Compilation happens \textit{Just in Time}.
+\end{itemize}
+\end{frame}
+
+\begin{frame}
+\frametitle{Two Engines in LLVM}
 	\begin{itemize}
-	\item Path(Motion) planning.
-	\item Computational bottleneck
-	\item Difficult to represent(noisy observation).
+	\item JIT(Old one, to be removed after llvm 3.5);
+	\item MCJIT(New one utlizing MC).
 	\end{itemize}
-	\begin{figure}
-		\includegraphics[width=5cm]{Pic/PS.png}
-		\caption{Will they collide?}
-	\end{figure}
 \end{frame}
 
 %------------------------------------------------
-
+\section{JIT}
 %------------------------------------------------
-\section{Problem Statement} % Sections can be created in order to organize your presentation into discrete blocks, all sections and subsections are automatically printed in the table of contents as an overview of the talk
-%------------------------------------------------
-
-%\subsection{Subsection Example} % A subsection can be created just before a set of slides with a common theme to further break down your presentation into chunks
-
-\begin{frame}
-\frametitle{Problem Statement}
-Given set:$A, B$(confined by meshes),
-want to know whether: 
-$$A \cap B = \emptyset$$
-True / False ?
-\textbf{Probability}!
-\\
-\textbf{Gaussian Distribution} to A required:
-$$\epsilon \sim \mathcal{N}(0, \Sigma)$$
-$$A + \epsilon := \{a+\epsilon | a \in A\}$$
-$$V := (A+\epsilon) \cap B$$
-Find: 
-$$P(V \neq \emptyset) = \iiint_Vp(\mathbf{x},0,\mathbf{\Sigma})d\,\mathbf{x}$$
-\end{frame}
-
-%------------------------------------------------
-\section{Approach} % Sections can be created in order to organize your presentation into discrete blocks, all sections and subsections are automatically printed in the table of contents as an overview of the talk
-%------------------------------------------------
-
-%------------------------------------------------
-%\begin{frame}
-%\frametitle{Convex shape}
-%	$A$ is a convex set $\Leftrightarrow$ \\ $\forall a, b \in A$, 
-%	$\forall s\geq 0, t \geq 0, s+t=1$, s.t. $sa+tb \in A$
-%	\begin{figure}\label{Convex}
-%		\includegraphics[width=4cm]{Pic/ConvexShape.png}
-%		\includegraphics[width=4cm]{Pic/Non-ConvexShape.png}
-%		\caption{The left hand side is a convex set while the right hand side is not.}
-%	\end{figure}
-%\end{frame}
-
 %------------------------------------------------
 \begin{frame}
-\frametitle{Probability on convex shape}
+\frametitle{JIT}
 	\begin{itemize}
-	\item Normalize Gaussian Distribution: $A' = (\Sigma^{-\frac{1}{2}})A$, $B' = (\Sigma^{-\frac{1}{2}})B$. 
-	\item Calculate Minkowski Sum: $V' = A' + B'$. Property: For two convex hull, the result is a convex space.
-	\item Divergence Theorem: Integration over $V'$ transformed to $S'$, where $S'$ is the surface of $V'$
-	\item Mesh representation approximation \& Upper Bound approximation: 
-	$$\oiint_{S'}\mathbf{F}\cdot\mathbf{n_s}\,dS \leq \sum_i(max_{j = 1,2,3}\mathbf{F}(S_{ij})\cdot\mathbf{n}_i)S_{\Delta S_{i1}S{i2}S{i3}}$$
-	$$P_{real} \leq P_{calculated}$$
+	\item Function based;
+	\item Compile one function at a time;
+	\item Compilation happens when function pointer is generated or called(lazy compilation).
 	\end{itemize}
 \end{frame}
 
 %------------------------------------------------
 \begin{frame}
-\frametitle{Probability on non-convex shape: approach}
+\frametitle{How to use JIT}
 	\begin{itemize}
-	\item Take non-convex shape apart.
-	\item Form a bounding volume hierarchies(BVHs)
-	\item Many methods for this available: spheres, AABBs, OBBs, etc)
+		\item Load \textit{.bc} file;
+		\item Construct a parser on the file;
+		\item Based on the parser construct an execution engine;
+		\item Load one specific function using parser and throw it to the executuon engine;
+		\item Woola! You got a function pointer pointing to a newly compiled function;
+		\item Call the function.
+		\item Release Memory and shutdown llvm
 	\end{itemize}
-	\begin{figure}
-		\includegraphics[width=5cm]{Pic/a.png}
-		\caption{An example using OBBs to form BVH.}
-	\end{figure}
 \end{frame}
 
-%------------------------------------------------
+\defverbatim[colored]\JITCodeOne{
+\begin{lstlisting}
+	MemoryBuffer::getFile("./sum.bc", Buffer);
+	Module *M = ParseBitcodeFile(Buffer.get(), Context, &ErrorMessage);
+	OwningPtr<ExecutionEngine> EE(EngineBuilder(M).create());
+	Function *SumFn = M->getFunction("sum");
+	int (*Sum)(int, int) = (int (*)(int, int)) EE->getPointerToFunction(SumFn);
+	int res = Sum(4,5);
+	EE->freeMachineCodeForFunction(SumFn);
+	llvm_shutdown();
+\end{lstlisting}}
+
 \begin{frame}
-\frametitle{Probability on non-convex shape: calculation}
+\frametitle{How to use JIT cont.}
+\JITCodeOne
+\end{frame}
+
+\begin{frame}
+\frametitle{How JIT works}
 	\begin{itemize}
-	\item Set confidence level$\delta_{CD} < 1$(normally $\delta_{CD} > 0.9$).
-	\item Compare $P_{calculated}$ with $1-\delta_{CD}$
-	\item Be more specific if $P_{calculated} > 1-\delta_{CD}$
+		\item Memory Manager: \textit{JITMemoryManager};
+		\item Code emitter\textit{$<$Target$>$CodeEmitter};
+		\item Target Information(Classes that targets on different platforms \textit{TargetJITInfo})
+		\item Put a figure here.
 	\end{itemize}
-%	\begin{figure}	
-%		\includegraphics[width=2cm]{Pic/b.png}
-%		\includegraphics[width=2cm]{Pic/c.png}
-%		\caption{Boxes so far away that no more detection is required.}
-%	\end{figure}
-%	\begin{figure}	
-%		\includegraphics[width=2cm]{Pic/d.png}
-%		\includegraphics[width=2cm]{Pic/e.png}
-%		\caption{We are not sure about the bounding box so we do the further checking.}
-%	\end{figure}
+\end{frame}
+%------------------------------------------------
+\defverbatim[colored]\JITCodeTwo{
+\begin{lstlisting}
+	vector<GenericValue> FnArgs(2);
+	FnArgs[0].IntVal = APInt(32,4);
+	FnArgs[1].IntVal = APInt(32,5);
+	GenericValue Res = EE->runFunction(SumFn, FnArgs);
+\end{lstlisting}
+}
+
+\begin{frame}
+\frametitle{Use of generic value}
+\begin{itemize}
+	\item Use a \textit{vector$<$GenericValue$>$} as parameters.
+	\item Call \textit{runFunction} without getting a function pointer.
+\end{itemize}
+\JITCodeTwo
 \end{frame}
 
 %------------------------------------------------
+\section{MCJIT}
+%------------------------------------------------
+%------------------------------------------------
 \begin{frame}
-\frametitle{Probability on non-convex shape: example}
-	\begin{figure}	
-		\includegraphics[width=2.5cm]{Pic/b.png}
-		\includegraphics[width=2.5cm]{Pic/c.png}
-		\caption{Boxes so far away that no more detection is required.}
-	\end{figure}
-	\begin{figure}	
-		\includegraphics[width=2.5cm]{Pic/d.png}
-		\includegraphics[width=2.5cm]{Pic/e.png}
-		\caption{We are not sure about the bounding box so we do the further checking.}
-	\end{figure}
+\frametitle{Difference}
+\begin{itemize}
+	\item Module based. Compilation happens for one module at a time.
+	\item Utilizes MC framework we talked in the last Lecture by Zhiqiang.
+\end{itemize}
+\end{frame}
+
+\begin{frame}
+\frametitle{State definition}
+\begin{itemize}
+	\item Added: Not compiled but already added to the engine;
+	\item Loaded: Compiled but not ready for execution;
+	\item Finalized: functions executable.
+\end{itemize}
 \end{frame}
 
 %------------------------------------------------
-\section{Experiments}
-%------------------------------------------------
-%------------------------------------------------
-\begin{frame}
-\frametitle{Experiments}
-	\begin{figure}	
-		\includegraphics[width=2.5cm]{Pic/Benchmark1.png}
-		\includegraphics[width=2.5cm]{Pic/Benchmark2.png}
-		\includegraphics[width=2.5cm]{Pic/Benchmark3.png}
-		\caption{Benchmark \#1(5,110 meshes), \#2(10,000 meshes), \#3(10,000 meshes)}
-	\end{figure}
-	\begin{figure}	
-		\includegraphics[width=12cm]{Pic/Table.png}
-		\caption{Results}
-	\end{figure}
-\end{frame}
-
-
-
-%------------------------------------------------
-\section{Conclusion}
+\section{Discussion}
 %------------------------------------------------
 
 \begin{frame}
-\frametitle{Conclusion}
+\frametitle{Interpreter, JIT and Compiler}
 	\begin{itemize}
 	\item Probabilistic collision detection for general shapes.
 	\item Fast and reliable
